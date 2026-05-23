@@ -23,6 +23,7 @@ jobs:
           cache-dependency-path: examples/migpt/pnpm-lock.yaml
       - uses: dtolnay/rust-toolchain@stable
       - run: pnpm install --frozen-lockfile
+      - run: cp config.example.ts config.ts
       - run: cargo test --manifest-path Cargo.toml
       - run: npx tsc --noEmit
       - run: pnpm test
@@ -45,6 +46,7 @@ jobs:
           cache-dependency-path: examples/migpt/pnpm-lock.yaml
       - uses: dtolnay/rust-toolchain@stable
       - run: pnpm install --frozen-lockfile
+      - run: cp config.example.ts config.ts
       - run: pnpm build
       - name: Pack release
         run: |
