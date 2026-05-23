@@ -93,51 +93,29 @@ jobs:
           OPEN_XIAOAI_TOKEN: ${{ secrets.OPEN_XIAOAI_TOKEN }}
         run: |
           scp "/tmp/migpt-${TAG}.tar.gz" "${VPS_USER}@${VPS_HOST}:/tmp/migpt-${TAG}.tar.gz"
-          ssh "${VPS_USER}@${VPS_HOST}" env \
-            "TAG=${TAG}" \
-            "DOUBAO_APP_ID=${DOUBAO_APP_ID}" \
-            "DOUBAO_ACCESS_KEY=${DOUBAO_ACCESS_KEY}" \
-            "OPEN_XIAOAI_TOKEN=${OPEN_XIAOAI_TOKEN}" \
-            bash -s << 'REMOTE'
-          set -euo pipefail
-          MIGPT_ROOT="/opt/migpt"
-          RELEASE="${MIGPT_ROOT}/releases/${TAG}"
-          mkdir -p "${MIGPT_ROOT}/releases"
-          rm -rf "${RELEASE}"
-          mkdir -p "${RELEASE}"
-          tar xzf "/tmp/migpt-${TAG}.tar.gz" -C "${RELEASE}"
-          rm -f "/tmp/migpt-${TAG}.tar.gz"
-
-          PREVIOUS=""
-          if [[ -L "${MIGPT_ROOT}/current" ]]; then
-            PREVIOUS="$(readlink -f "${MIGPT_ROOT}/current" || true)"
-          fi
-          echo "${PREVIOUS}" > /tmp/migpt-previous-release
-
-          cd "${RELEASE}"
-          pnpm install --frozen-lockfile
-          node scripts/render-deploy-config.mjs
-          printf 'OPEN_XIAOAI_TOKEN=%s\n' "${OPEN_XIAOAI_TOKEN}" > .env
-
-          ln -sfn "${RELEASE}" "${MIGPT_ROOT}/current"
-          cd "${MIGPT_ROOT}/current"
-
-          if pm2 describe migpt >/dev/null 2>&1; then
-            pm2 reload ecosystem.config.cjs --update-env
-          else
-            pm2 start ecosystem.config.cjs
-            pm2 save
-          fi
-
-          cd "${MIGPT_ROOT}/releases"
-          ls -1dt v* 2>/dev/null | tail -n +4 | xargs -r rm -rf
-          REMOTE
+          cat > /tmp/migpt-deploy.env <<EOF
+          TAG=${TAG}
+          DOUBAO_APP_ID=${DOUBAO_APP_ID}
+          DOUBAO_ACCESS_KEY=${DOUBAO_ACCESS_KEY}
+          OPEN_XIAOAI_TOKEN=${OPEN_XIAOAI_TOKEN}
+          EOF
+          scp /tmp/migpt-deploy.env "${VPS_USER}@${VPS_HOST}:/tmp/migpt-deploy.env"
+          scp examples/migpt/scripts/deploy-remote.sh "${VPS_USER}@${VPS_HOST}:/tmp/migpt-deploy.sh"
+          ssh "${VPS_USER}@${VPS_HOST}" "chmod +x /tmp/migpt-deploy.sh && bash /tmp/migpt-deploy.sh /tmp/migpt-deploy.env"
+          rm -f /tmp/migpt-deploy.env
       - name: WebSocket smoke test
         working-directory: examples/migpt
         run: |
           pnpm install --frozen-lockfile
-          SMOKE_WS_URL="ws://${{ secrets.VPS_HOST }}:4399?token=${{ secrets.OPEN_XIAOAI_TOKEN }}" \
-            pnpm exec tsx scripts/deploy-smoke.ts
+          for i in 1 2 3 4 5 6; do
+            if SMOKE_WS_URL="ws://${{ secrets.VPS_HOST }}:4399?token=${{ secrets.OPEN_XIAOAI_TOKEN }}" \
+              pnpm exec tsx scripts/deploy-smoke.ts; then
+              exit 0
+            fi
+            echo "smoke retry $i..."
+            sleep 5
+          done
+          exit 1
       - name: Rollback on smoke failure
         if: failure()
         env:

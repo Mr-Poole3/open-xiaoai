@@ -33,9 +33,6 @@ if ! command -v pm2 >/dev/null 2>&1; then
 fi
 
 mkdir -p "${MIGPT_ROOT}/releases"
-if [[ ! -e "${MIGPT_ROOT}/current" ]]; then
-  ln -sfn "${MIGPT_ROOT}/releases" "${MIGPT_ROOT}/current"
-fi
 
 echo "==> PM2 startup (run the command PM2 prints if not already done)"
 env PATH="$PATH:$(npm prefix -g)" pm2 startup systemd -u "${SUDO_USER:-root}" --hp "/root" || true
