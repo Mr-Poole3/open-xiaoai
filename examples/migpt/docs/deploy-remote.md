@@ -49,12 +49,15 @@ Actions 流程：测试 → 构建 tar → SSH 部署到 `/opt/migpt/releases/<t
 
 ## 音箱配置（一次性）
 
+在音箱上写入（SSH 登录后）：
+
 ```bash
-# /data/open-xiaoai/server.txt
-ws://115.190.170.8:4399?token=<与 OPEN_XIAOAI_TOKEN 相同>
+echo 'ws://115.190.170.8:4399?token=<与 OPEN_XIAOAI_TOKEN 相同>' > /data/open-xiaoai/server.txt
+pkill -f '/data/open-xiaoai/client' || true
+/data/open-xiaoai/client "$(cat /data/open-xiaoai/server.txt)" >/dev/null 2>&1 &
 ```
 
-或使用本地切换脚本（见下）。
+若 Mac 已配置 SSH 密钥，可用切换脚本（见下）。
 
 ## 本地开发 vs 生产
 
