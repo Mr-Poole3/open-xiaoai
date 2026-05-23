@@ -10,7 +10,9 @@ use open_xiaoai::utils::task::TaskManager;
 
 use serde_json::json;
 use tokio::net::{TcpListener, TcpStream};
-use tokio_tungstenite::accept_async;
+use tokio_tungstenite::accept_hdr_async;
+
+use crate::connection_auth;
 
 use crate::node::NodeManager;
 
@@ -30,7 +32,7 @@ async fn test() -> Result<(), AppError> {
 
 impl AppServer {
     pub async fn connect(stream: TcpStream) -> Result<WsStream, AppError> {
-        let ws_stream = accept_async(stream).await?;
+        let ws_stream = accept_hdr_async(stream, connection_auth::handshake_callback).await?;
         Ok(WsStream::Server(ws_stream))
     }
 

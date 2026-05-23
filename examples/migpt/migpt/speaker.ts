@@ -1,4 +1,5 @@
 import { jsonEncode } from "@mi-gpt/utils/parse";
+import { kPlayAudioConfig, type AudioConfig } from "./audio-config.js";
 import { RustServer } from "./open-xiaoai.js";
 import type { ISpeaker } from "@mi-gpt/engine/base";
 
@@ -35,6 +36,20 @@ class SpeakerManager implements ISpeaker {
       playing ? "mphelper play" : "mphelper pause"
     );
     return res?.stdout.includes('"code": 0');
+  }
+
+  /**
+   * 启动音箱端 AudioPlayer（裸流播放前必须调用）
+   */
+  async startPlay(config: AudioConfig = kPlayAudioConfig) {
+    return RustServer.start_play(JSON.stringify(config)) as Promise<boolean>;
+  }
+
+  /**
+   * 停止音箱端 AudioPlayer
+   */
+  async stopPlay() {
+    return RustServer.stop_play() as Promise<boolean>;
   }
 
   /**

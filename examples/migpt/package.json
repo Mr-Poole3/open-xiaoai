@@ -7,16 +7,24 @@
   "scripts": {
     "build": "cargo-cp-artifact -ac open_xiaoai_server migpt/open-xiaoai.node -- cargo build --release --message-format=json-render-diagnostics",
     "start": "tsx migpt/index.ts",
-    "dev": "pnpm build && pnpm start"
+    "dev": "pnpm build && pnpm start",
+    "test": "node --import tsx --test migpt/doubao/*.test.ts migpt/wake-router.test.ts migpt/playback-orchestrator.test.ts",
+    "test:raw-audio": "pnpm build && tsx scripts/test-raw-audio.ts",
+    "doubao:speak": "pnpm build && tsx scripts/doubao-speak.ts",
+    "speaker:local": "bash scripts/speaker-server-local.sh",
+    "speaker:prod": "bash scripts/speaker-server-prod.sh",
+    "deploy:smoke": "tsx scripts/deploy-smoke.ts"
   },
   "dependencies": {
     "@mi-gpt/engine": "1.2.1",
-    "@mi-gpt/utils": "1.1.1"
+    "@mi-gpt/utils": "1.1.1",
+    "ws": "^8.18.1"
   },
   "devDependencies": {
     "@mi-gpt/config": "1.1.0",
     "@neon-rs/cli": "0.1.82",
     "@types/node": "^22.13.11",
+    "@types/ws": "^8.18.1",
     "cargo-cp-artifact": "^0.1.9",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2"

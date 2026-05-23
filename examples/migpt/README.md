@@ -76,7 +76,9 @@ pnpm dev
 
 1. 默认 Server 服务端口为 `4399`（比如 ws://192.168.31.227:4399），运行前请确保该端口未被其他程序占用。
 
-2. 默认 Rust Server 在启动时，并没有开启小爱音箱的录音能力。
+2. **远程常驻部署（V2）**：见 [docs/deploy-remote.md](./docs/deploy-remote.md) — 云 VPS + `OPEN_XIAOAI_TOKEN` + tag 自动部署。
+
+3. 默认 Rust Server 在启动时，并没有开启小爱音箱的录音能力。
    如果你需要在 Node.js 端正常接收音频输入流，或者播放音频输出流，请将 `src/server.rs` 文件中被注释掉的 `start_recording` 和 `start_play` 代码加回来，然后重新编译运行。
 
 > [!NOTE]
