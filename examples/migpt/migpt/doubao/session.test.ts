@@ -133,6 +133,57 @@ describe("doubao session (mock ws)", () => {
     }
   });
 
+  it("processes burst TTS chunks serially before TTSEnded resolves", async () => {
+    const finishedSessions: string[] = [];
+    const server = await startMockServer(async (ws) => {
+      ws.on("message", async (raw) => {
+        const buf = Buffer.from(raw as Buffer);
+        const eventId = buf.readUInt32BE(4);
+        const sessionId = readSessionId(buf);
+
+        if (eventId === ClientEvent.StartConnection) {
+          ws.send(serverJsonFrame(ServerEvent.ConnectionStarted, {}));
+          return;
+        }
+
+        if (eventId === ClientEvent.StartSession && sessionId) {
+          ws.send(serverJsonFrame(ServerEvent.SessionStarted, {}, sessionId));
+          return;
+        }
+
+        if (eventId === ClientEvent.ChatTextQuery && sessionId) {
+          ws.send(serverAudioFrame(ServerEvent.TTSResponse, sessionId, Buffer.from([1])));
+          ws.send(serverAudioFrame(ServerEvent.TTSResponse, sessionId, Buffer.from([2])));
+          ws.send(serverAudioFrame(ServerEvent.TTSResponse, sessionId, Buffer.from([3])));
+          ws.send(serverJsonFrame(ServerEvent.TTSEnded, {}, sessionId));
+          return;
+        }
+
+        if (eventId === ClientEvent.FinishSession && sessionId) {
+          finishedSessions.push(sessionId);
+          ws.send(serverJsonFrame(ServerEvent.SessionFinished, {}, sessionId));
+        }
+      });
+    });
+
+    const client = new DoubaoClient(testConfig);
+    const session = new DoubaoSession(client, testConfig);
+    const order: number[] = [];
+
+    await session.speak({
+      text: "burst",
+      onAudioChunk: async (chunk) => {
+        order.push(chunk[0]!);
+        await new Promise((r) => setTimeout(r, 30));
+      },
+    });
+
+    assert.deepEqual(order, [1, 2, 3]);
+    assert.equal(finishedSessions.length, 1);
+    await client.close();
+    await server.close();
+  });
+
   it("reconnects after simulated disconnect", async () => {
     let connections = 0;
     const server = await startMockServer(async (ws) => {

@@ -1,0 +1,8 @@
+{"sessionId":"11a55b","runId":"vps-cooper-stop","hypothesisId":"H4","location":"session.ts:collectTts","message":"wait TTSEnded","data":{"sessionId":"3ce5b668","timeoutMs":300000},"timestamp":1779543758742}
+{"sessionId":"11a55b","runId":"vps-cooper-stop","hypothesisId":"H4","location":"session.ts:collectTts","message":"TTSEnded","data":{"elapsedMs":27,"ttsChunkCount":1},"timestamp":1779543758769}
+{"sessionId":"11a55b","runId":"vps-cooper-stop","hypothesisId":"H4","location":"session.ts:collectTts","message":"wait TTSEnded","data":{"sessionId":"cc758e7a","timeoutMs":5000},"timestamp":1779543758780}
+{"sessionId":"11a55b","runId":"vps-cooper-stop","hypothesisId":"H4","location":"session.ts:collectTts","message":"wait TTSEnded","data":{"sessionId":"ddad1ee5","timeoutMs":300000},"timestamp":1779543764700}
+{"sessionId":"11a55b","runId":"vps-cooper-stop","hypothesisId":"H4","location":"session.ts:collectTts","message":"TTSEnded","data":{"elapsedMs":23,"ttsChunkCount":1},"timestamp":1779543764723}
+{"sessionId":"11a55b","runId":"vps-cooper-stop","hypothesisId":"H4","location":"session.ts:collectTts","message":"wait TTSEnded","data":{"sessionId":"2d2af76c","timeoutMs":5000},"timestamp":1779543764737}
+{"sessionId":"11a55b","runId":"vps-cooper-stop","hypothesisId":"H4","location":"session.ts:collectTts","message":"wait TTSEnded","data":{"sessionId":"bd40fc45","timeoutMs":300000},"timestamp":1779543764741}
+{"sessionId":"11a55b","runId":"vps-cooper-stop","hypothesisId":"H4","location":"session.ts:collectTts","message":"TTSEnded","data":{"elapsedMs":95,"ttsChunkCount":3},"timestamp":1779543764836}

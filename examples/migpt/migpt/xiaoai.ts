@@ -25,6 +25,9 @@ const kDefaultOpenXiaoAIConfig: OpenXiaoAIConfig = {
   provider: "doubao",
 };
 
+/** Ignore duplicate Cooper ASR within this window (VPS WAN often delivers twice). */
+const COOPER_DEDUPE_MS = 60_000;
+
 /** Ignore spurious is_vad_begin before the first Cooper audio chunk arrives. */
 const PLAYBACK_VAD_GRACE_MS = 4_000;
 
@@ -50,6 +53,8 @@ class OpenXiaoAIEngine extends MiGPTEngine {
   private lastAbortAt = 0;
   private playbackStartedAt = 0;
   private cooperAudioStarted = false;
+  private activeCooperText = "";
+  private activeCooperStartedAt = 0;
   private wakeRouter = new WakeRouter();
   private playbackOrchestrator = new PlaybackOrchestrator();
 
@@ -101,6 +106,14 @@ class OpenXiaoAIEngine extends MiGPTEngine {
     return Date.now() - this.playbackStartedAt < PLAYBACK_VAD_GRACE_MS;
   }
 
+  private isDuplicateCooperQuery(text: string) {
+    return (
+      text === this.activeCooperText &&
+      this.activeCooperText.length > 0 &&
+      Date.now() - this.activeCooperStartedAt < COOPER_DEDUPE_MS
+    );
+  }
+
   /** Stop Cooper raw stream + cancel current Doubao round. */
   private async stopCooperPlayback(options: { resetDialog?: boolean } = {}) {
     if (!this.isCooperActive()) return;
@@ -141,6 +154,10 @@ class OpenXiaoAIEngine extends MiGPTEngine {
         this.playbackOrchestrator.enterIdle();
       }
       if (this.isCooperActive()) {
+        if (this.isDuplicateCooperQuery(msg.text)) {
+          console.log("🔁 忽略重复 Cooper 请求");
+          return;
+        }
         await this.stopCooperPlayback();
       }
       this.lastAbortAt = Date.now();
@@ -160,6 +177,8 @@ class OpenXiaoAIEngine extends MiGPTEngine {
     if (this.hasNewerMessage(msg) || this.status !== "running") return;
 
     const playbackId = ++this.playbackSeq;
+    this.activeCooperText = msg.text;
+    this.activeCooperStartedAt = Date.now();
     console.log(`🗣️  Cooper: ${msg.text}`);
     this.interruptRequested = false;
     await sleep(2000);
@@ -259,6 +278,10 @@ class OpenXiaoAIEngine extends MiGPTEngine {
           this.playbackOrchestrator.enterIdle();
         }
       }
+      if (playbackId === this.playbackSeq) {
+        this.activeCooperText = "";
+        this.activeCooperStartedAt = 0;
+      }
     }
   }
 
@@ -299,6 +322,9 @@ class OpenXiaoAIEngine extends MiGPTEngine {
         const isFinal = Boolean(line?.payload?.is_final);
 
         if (isFinal && text) {
+          if (this.isCooperActive() && this.isDuplicateCooperQuery(text)) {
+            return;
+          }
           if (this.isCooperActive()) {
             void (async () => {
               await this.stopCooperPlayback({

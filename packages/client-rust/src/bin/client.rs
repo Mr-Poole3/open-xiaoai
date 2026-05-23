@@ -36,8 +36,21 @@ impl AppClient {
         Ok(WsStream::Client(ws_stream))
     }
 
+    fn resolve_server_url() -> String {
+        if let Some(arg) = std::env::args().nth(1) {
+            if !arg.trim().is_empty() {
+                return arg.trim().to_string();
+            }
+        }
+        const SERVER_FILE: &str = "/data/open-xiaoai/server.txt";
+        std::fs::read_to_string(SERVER_FILE)
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .expect("❌ 请传入服务器地址，或写入 /data/open-xiaoai/server.txt")
+    }
+
     pub async fn run(&mut self) {
-        let url = std::env::args().nth(1).expect("❌ 请输入服务器地址");
+        let url = Self::resolve_server_url();
         println!("✅ 已启动");
         loop {
             let Ok(ws_stream) = self.connect(&url).await else {

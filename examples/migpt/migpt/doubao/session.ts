@@ -49,7 +49,7 @@ export class DoubaoSession {
     systemPrompt = "",
     dialogId,
     onAudioChunk,
-    timeoutMs = 60_000,
+    timeoutMs = 300_000,
   }: SpeakOptions): Promise<void> {
     const sessionId = randomUUID();
     this.activeSessionId = sessionId;
@@ -97,59 +97,83 @@ export class DoubaoSession {
     onAudioChunk: (chunk: Buffer) => void | Promise<void>,
     timeoutMs: number
   ) {
-    await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        off();
-        this.rejectActive = null;
-        reject(new Error("timeout waiting for TTSEnded"));
-      }, timeoutMs);
+    let settled = false;
+    let chain: Promise<void> = Promise.resolve();
 
-      this.rejectActive = (err) => {
-        clearTimeout(timer);
+    await new Promise<void>((resolve, reject) => {
+      let timer: ReturnType<typeof setTimeout> | null = null;
+
+      const settle = (fn: () => void) => {
+        if (settled) return;
+        settled = true;
+        if (timer) clearTimeout(timer);
         off();
         this.rejectActive = null;
-        reject(err);
+        fn();
       };
 
-      const off = this.client.onFrame(async (frame) => {
+      const armTimer = () => {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => {
+          settle(() => reject(new Error("timeout waiting for TTSEnded")));
+        }, timeoutMs);
+      };
+
+      armTimer();
+
+      this.rejectActive = (err) => {
+        chain = chain.finally(() => {
+          settle(() => reject(err));
+        });
+      };
+
+      const off = this.client.onFrame((frame) => {
         if (frame.sessionId && frame.sessionId !== sessionId) return;
 
         if (frame.eventId === ServerEvent.TTSResponse && frame.isAudio) {
-          try {
-            await onAudioChunk(frame.payload);
-          } catch (err) {
-            if (!isDoubaoCancelled(err)) throw err;
-            clearTimeout(timer);
-            off();
-            this.rejectActive = null;
-            reject(err instanceof Error ? err : new Error(DOUBAO_CANCELLED));
-          }
+          const payload = frame.payload;
+          chain = chain
+            .then(async () => {
+              if (settled) return;
+              await onAudioChunk(payload);
+              armTimer();
+            })
+            .catch((err) => {
+              if (isDoubaoCancelled(err)) {
+                settle(() =>
+                  reject(
+                    err instanceof Error ? err : new Error(DOUBAO_CANCELLED)
+                  )
+                );
+                return;
+              }
+              settle(() =>
+                reject(err instanceof Error ? err : new Error(String(err)))
+              );
+            });
           return;
         }
 
         if (frame.eventId === ServerEvent.SessionFailed) {
-          clearTimeout(timer);
-          off();
-          this.rejectActive = null;
           const body = parseJsonPayload<{ message?: string }>(frame.payload);
-          reject(new Error(body.message ?? "SessionFailed"));
+          chain = chain.finally(() => {
+            settle(() => reject(new Error(body.message ?? "SessionFailed")));
+          });
           return;
         }
 
         if (frame.eventId === ServerEvent.DialogCommonError) {
-          clearTimeout(timer);
-          off();
-          this.rejectActive = null;
           const body = parseJsonPayload<{ message?: string }>(frame.payload);
-          reject(new Error(body.message ?? "DialogCommonError"));
+          chain = chain.finally(() => {
+            settle(() => reject(new Error(body.message ?? "DialogCommonError")));
+          });
           return;
         }
 
         if (frame.eventId === ServerEvent.TTSEnded && frame.sessionId === sessionId) {
-          clearTimeout(timer);
-          off();
-          this.rejectActive = null;
-          resolve();
+          chain = chain.finally(() => {
+            settle(() => resolve());
+          });
         }
       });
     });

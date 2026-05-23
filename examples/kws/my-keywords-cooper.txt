@@ -1,0 +1,5 @@
+# Client-side KWS uses pinyin tokens. @ tag must not contain spaces (use hicooper not "hi cooper").
+# Deploy keywords-cooper.example.txt to the speaker (do not create reply.txt).
+
+hi cooper
+嗨库珀
